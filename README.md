@@ -96,7 +96,7 @@ MIT License — используйте как хотите, но упомяни�
 
 ## Контакты
 
-Вопросы, баги, идеи? Пишите в Issues или на почту: **antibrutsystem@mail.ru** (Антибрут).
+Вопросы, баги, идеи? Пишите в Issues или на почту: **antibrutsystem@mail.ru**
 
 ---
 
@@ -200,4 +200,4 @@ MIT License — use it however you like, just give me a shoutout if you fork it.
 
 ## Contact
 
-Questions, bugs, or suggestions? File an Issue or email me at **antibrutsystem@mail.ru** (Antibrut).
+Questions, bugs, or suggestions? File an Issue or email me at **antibrutsystem@mail.ru** 
