@@ -266,10 +266,13 @@ function showElementTooltip(element, x, y) {
   const tooltip = document.createElement('div');
   tooltip.className = 'extension-tooltip';
   tooltip.textContent = `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.className ? `.${element.className.split(' ').join('.')}` : ''}`;
+  const rect = element.getBoundingClientRect();
+  const scrollX = window.scrollX || window.pageXOffset;
+  const scrollY = window.scrollY || window.pageYOffset;
   tooltip.style.cssText = `
     position: absolute;
-    top: ${y + 10}px;
-    left: ${x + 10}px;
+    top: ${rect.top + scrollY + 10}px;
+    left: ${rect.left + scrollX + 10}px;
     background: rgba(12, 153, 214, 0.9);
     color: white;
     padding: 4px 8px;
