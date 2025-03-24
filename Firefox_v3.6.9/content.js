@@ -6,8 +6,8 @@ let currentLang = 'ru';
 let lastHighlighted = null;
 let controlPanel = null;
 let instructionWindow = null;
-let useFullElementFormat = true; // true - Краткий, false - Полный
-let useCoordinates = false;
+let useFullElementFormat = false; // Теперь "Полный" по умолчанию (false)
+let useCoordinates = true; // "Координаты" включены по умолчанию
 
 function createOverlay() {
   if (!overlay) {
