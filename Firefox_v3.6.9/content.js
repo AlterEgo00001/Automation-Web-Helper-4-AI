@@ -6,8 +6,10 @@ let currentLang = 'ru';
 let lastHighlighted = null;
 let controlPanel = null;
 let instructionWindow = null;
-let useFullElementFormat = false; // Теперь "Полный" по умолчанию (false)
+let useFullElementFormat = false; // "Полный" по умолчанию
 let useCoordinates = true; // "Координаты" включены по умолчанию
+
+const runtime = typeof chrome !== 'undefined' ? chrome : browser;
 
 function createOverlay() {
   if (!overlay) {
@@ -45,13 +47,10 @@ function makeDraggable(element, header) {
     pos2 = pos4 - e.clientY;
     pos3 = e.clientX;
     pos4 = e.clientY;
-
     let newTop = element.offsetTop - pos2;
     let newLeft = element.offsetLeft - pos1;
-
     newTop = Math.max(0, Math.min(newTop, window.innerHeight - element.offsetHeight));
     newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - element.offsetWidth));
-
     element.style.top = newTop + 'px';
     element.style.left = newLeft + 'px';
     element.style.bottom = 'auto';
@@ -82,51 +81,76 @@ function createControlPanel() {
       color: #E0E0E0;
       pointer-events: auto;
     `;
-    controlPanel.innerHTML = `
-      <div id="panelHeader" style="cursor: move; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;">
-        ${currentLang === 'ru' ? 'Панель управления' : 'Control Panel'}
-        <button id="minimizeButton" style="float: right; background: #D66B0C; color: white; border: none; padding: 4px 10px; border-radius: 4px; margin-left: 5px; font-size: 12px; cursor: pointer;">${currentLang === 'ru' ? 'Свернуть' : 'Minimize'}</button>
-        <button id="closePanelButton" style="float: right; background: #D32F2F; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">${currentLang === 'ru' ? 'Закрыть' : 'Close'}</button>
-      </div>
-      <div id="panelButtons" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px;">
-        <button id="highlightButton" style="background: #0C99D6; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;">${currentLang === 'ru' ? 'Подсветить элементы' : 'Highlight Elements'}</button>
-        <button id="removeHighlightButton" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;">${currentLang === 'ru' ? 'Снять подсветку' : 'Remove Highlight'}</button>
-        <button id="toggleFormatButton" style="background: ${useFullElementFormat ? '#28a745' : '#007bff'}; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;">${currentLang === 'ru' ? (useFullElementFormat ? 'Краткий' : 'Полный') : (useFullElementFormat ? 'Short' : 'Full')}</button>
-        <button id="toggleCoordinatesButton" style="background: ${useCoordinates ? '#ff9800' : '#6c757d'}; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;">${currentLang === 'ru' ? 'Координаты' : 'Coordinates'}</button>
-      </div>
-    `;
+
+    const header = document.createElement('div');
+    header.id = 'panelHeader';
+    header.style.cssText = 'cursor: move; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;';
+    header.textContent = currentLang === 'ru' ? 'Панель управления' : 'Control Panel';
+
+    const minimizeButton = document.createElement('button');
+    minimizeButton.id = 'minimizeButton';
+    minimizeButton.style.cssText = 'float: right; background: #D66B0C; color: white; border: none; padding: 4px 10px; border-radius: 4px; margin-left: 5px; font-size: 12px; cursor: pointer;';
+    minimizeButton.textContent = currentLang === 'ru' ? 'Свернуть' : 'Minimize';
+
+    const closeButton = document.createElement('button');
+    closeButton.id = 'closePanelButton';
+    closeButton.style.cssText = 'float: right; background: #D32F2F; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;';
+    closeButton.textContent = currentLang === 'ru' ? 'Закрыть' : 'Close';
+
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.id = 'panelButtons';
+    buttonsDiv.style.cssText = 'margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px;';
+
+    const highlightButton = document.createElement('button');
+    highlightButton.id = 'highlightButton';
+    highlightButton.style.cssText = 'background: #0C99D6; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;';
+    highlightButton.textContent = currentLang === 'ru' ? 'Подсветить элементы' : 'Highlight Elements';
+
+    const removeHighlightButton = document.createElement('button');
+    removeHighlightButton.id = 'removeHighlightButton';
+    removeHighlightButton.style.cssText = 'background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;';
+    removeHighlightButton.textContent = currentLang === 'ru' ? 'Снять подсветку' : 'Remove Highlight';
+
+    const toggleFormatButton = document.createElement('button');
+    toggleFormatButton.id = 'toggleFormatButton';
+    toggleFormatButton.style.cssText = `background: ${useFullElementFormat ? '#28a745' : '#007bff'}; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;`;
+    toggleFormatButton.textContent = currentLang === 'ru' ? (useFullElementFormat ? 'Краткий' : 'Полный') : (useFullElementFormat ? 'Short' : 'Full');
+
+    const toggleCoordinatesButton = document.createElement('button');
+    toggleCoordinatesButton.id = 'toggleCoordinatesButton';
+    toggleCoordinatesButton.style.cssText = `background: ${useCoordinates ? '#ff9800' : '#6c757d'}; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;`;
+    toggleCoordinatesButton.textContent = currentLang === 'ru' ? 'Координаты' : 'Coordinates';
+
+    header.appendChild(minimizeButton);
+    header.appendChild(closeButton);
+    buttonsDiv.appendChild(highlightButton);
+    buttonsDiv.appendChild(removeHighlightButton);
+    buttonsDiv.appendChild(toggleFormatButton);
+    buttonsDiv.appendChild(toggleCoordinatesButton);
+    controlPanel.appendChild(header);
+    controlPanel.appendChild(buttonsDiv);
     document.body.appendChild(controlPanel);
 
-    const header = document.getElementById('panelHeader');
     makeDraggable(controlPanel, header);
 
-    const minimizeButton = document.getElementById('minimizeButton');
-    const panelButtons = document.getElementById('panelButtons');
     minimizeButton.addEventListener('click', () => {
-      panelButtons.style.display = panelButtons.style.display === 'none' ? 'flex' : 'none';
-      minimizeButton.textContent = panelButtons.style.display === 'none'
+      buttonsDiv.style.display = buttonsDiv.style.display === 'none' ? 'flex' : 'none';
+      minimizeButton.textContent = buttonsDiv.style.display === 'none'
         ? (currentLang === 'ru' ? 'Развернуть' : 'Expand')
         : (currentLang === 'ru' ? 'Свернуть' : 'Minimize');
     });
 
-    const closeButton = document.getElementById('closePanelButton');
-    closeButton.addEventListener('click', () => {
-      removeHighlightMode();
-      controlPanel.remove();
-      controlPanel = null;
-    });
+    closeButton.addEventListener('click', stopSelectionMode);
+    highlightButton.addEventListener('click', enableHighlightMode);
+    removeHighlightButton.addEventListener('click', removeHighlightMode);
+    toggleFormatButton.addEventListener('click', toggleFormat);
+    toggleCoordinatesButton.addEventListener('click', toggleCoordinates);
 
-    document.getElementById('highlightButton').addEventListener('click', enableHighlightMode);
-    document.getElementById('removeHighlightButton').addEventListener('click', removeHighlightMode);
-    document.getElementById('toggleFormatButton').addEventListener('click', toggleFormat);
-    document.getElementById('toggleCoordinatesButton').addEventListener('click', toggleCoordinates);
-
-    // Эффекты наведения для кнопок
     const buttons = controlPanel.querySelectorAll('button');
     buttons.forEach(btn => {
-      btn.addEventListener('mouseover', () => btn.style.background = darkenColor(btn.style.background));
-      btn.addEventListener('mouseout', () => btn.style.background = btn.dataset.originalColor || btn.style.background);
       btn.dataset.originalColor = btn.style.background;
+      btn.addEventListener('mouseover', () => btn.style.background = darkenColor(btn.style.background));
+      btn.addEventListener('mouseout', () => btn.style.background = btn.dataset.originalColor);
     });
   }
 }
@@ -150,56 +174,64 @@ function createInstructionWindow() {
       pointer-events: auto;
       animation: slideUp 0.3s ease-out;
     `;
-    instructionWindow.innerHTML = `
-      <div id="instructionHeader" style="cursor: move; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;">
-        ${currentLang === 'ru' ? 'Инструкции' : 'Instructions'}
-        <button id="closeInstructionButton" style="float: right; background: #D32F2F; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">${currentLang === 'ru' ? 'Закрыть' : 'Close'}</button>
-        <button id="copyInstructionsButton" style="float: right; background: #0C99D6; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-right: 5px;">${currentLang === 'ru' ? 'Копировать' : 'Copy'}</button>
-      </div>
-      <textarea id="instructionsText" style="width: 100%; height: 180px; margin-top: 10px; background: #2A2F31; color: #E0E0E0; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 10px; font-size: 13px; resize: none;"></textarea>
-    `;
-    document.body.appendChild(instructionWindow);
-    updateInstructionWindow();
 
-    const header = document.getElementById('instructionHeader');
+    const header = document.createElement('div');
+    header.id = 'instructionHeader';
+    header.style.cssText = 'cursor: move; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 14px;';
+    header.textContent = currentLang === 'ru' ? 'Инструкции' : 'Instructions';
+
+    const copyButton = document.createElement('button');
+    copyButton.id = 'copyInstructionsButton';
+    copyButton.style.cssText = 'float: right; background: #0C99D6; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-right: 5px;';
+    copyButton.textContent = currentLang === 'ru' ? 'Копировать' : 'Copy';
+
+    const closeButton = document.createElement('button');
+    closeButton.id = 'closeInstructionButton';
+    closeButton.style.cssText = 'float: right; background: #D32F2F; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;';
+    closeButton.textContent = currentLang === 'ru' ? 'Закрыть' : 'Close';
+
+    const textarea = document.createElement('textarea');
+    textarea.id = 'instructionsText';
+    textarea.style.cssText = 'width: 100%; height: 180px; margin-top: 10px; background: #2A2F31; color: #E0E0E0; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 10px; font-size: 13px; resize: none;';
+
+    header.appendChild(closeButton);
+    header.appendChild(copyButton);
+    instructionWindow.appendChild(header);
+    instructionWindow.appendChild(textarea);
+    document.body.appendChild(instructionWindow);
+
+    updateInstructionWindow();
     makeDraggable(instructionWindow, header);
 
-    const copyButton = document.getElementById('copyInstructionsButton');
     copyButton.addEventListener('click', () => {
-      const textarea = document.getElementById('instructionsText');
       textarea.select();
       document.execCommand('copy');
       showNotification(currentLang === 'ru' ? 'Инструкции скопированы!' : 'Instructions copied!');
     });
 
-    const closeButton = document.getElementById('closeInstructionButton');
     closeButton.addEventListener('click', () => {
       parseInstructionsFromTextarea();
       instructionWindow.remove();
       instructionWindow = null;
     });
 
-    const textarea = document.getElementById('instructionsText');
-    textarea.addEventListener('change', () => parseInstructionsFromTextarea());
+    textarea.addEventListener('change', parseInstructionsFromTextarea);
 
-    // Эффекты наведения для кнопок
     const buttons = instructionWindow.querySelectorAll('button');
     buttons.forEach(btn => {
-      btn.addEventListener('mouseover', () => btn.style.background = darkenColor(btn.style.background));
-      btn.addEventListener('mouseout', () => btn.style.background = btn.dataset.originalColor || btn.style.background);
       btn.dataset.originalColor = btn.style.background;
+      btn.addEventListener('mouseover', () => btn.style.background = darkenColor(btn.style.background));
+      btn.addEventListener('mouseout', () => btn.style.background = btn.dataset.originalColor);
     });
   }
 }
 
 function updateInstructionWindow() {
-  if (instructionWindow) {
-    const textarea = document.getElementById('instructionsText');
-    if (textarea) {
-      textarea.value = instructions.length
-        ? instructions.map((i, idx) => `${idx + 1}. ${i.instruction} [${i.element}]`).join('\n')
-        : (currentLang === 'ru' ? 'Инструкций нет' : 'No instructions');
-    }
+  const textarea = document.getElementById('instructionsText');
+  if (textarea) {
+    textarea.value = instructions.length
+      ? instructions.map((i, idx) => `${idx + 1}. ${i.instruction} [${i.element}]`).join('\n')
+      : (currentLang === 'ru' ? 'Инструкций нет' : 'No instructions');
   }
 }
 
@@ -222,8 +254,11 @@ function removeOverlay() {
   clearHighlight();
 }
 
-function removeAllUI() {
-  removeOverlay();
+function stopSelectionMode() {
+  isSelectionMode = false;
+  isHighlightingEnabled = false;
+  document.removeEventListener('mouseover', highlightElement);
+  document.removeEventListener('click', handleAllClicks, { capture: true });
   if (controlPanel) {
     controlPanel.remove();
     controlPanel = null;
@@ -233,11 +268,13 @@ function removeAllUI() {
     instructionWindow.remove();
     instructionWindow = null;
   }
+  removeOverlay();
+  runtime.runtime.sendMessage({ action: 'showInstructions', instructions });
+  saveStateToBackground();
 }
 
 function highlightElement(event) {
   if (!isSelectionMode || !isHighlightingEnabled) return;
-
   const target = document.elementFromPoint(event.clientX, event.clientY);
   if (!target || target.closest('.extension-control-panel, .extension-instruction-window')) return;
 
@@ -246,8 +283,6 @@ function highlightElement(event) {
   target.style.boxShadow = '0 0 8px rgba(12, 153, 214, 0.5)';
   target.style.transition = 'outline 0.1s, box-shadow 0.1s';
   lastHighlighted = target;
-
-  // Tooltip с краткой информацией
   showElementTooltip(target, event.clientX, event.clientY);
 }
 
@@ -265,7 +300,8 @@ function showElementTooltip(element, x, y) {
   removeElementTooltip();
   const tooltip = document.createElement('div');
   tooltip.className = 'extension-tooltip';
-  tooltip.textContent = `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.className ? `.${element.className.split(' ').join('.')}` : ''}`;
+  const desc = getFullElementDescription(element, x, y);
+  tooltip.textContent = useFullElementFormat ? desc : `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}${element.className ? `.${element.className.split(' ').join('.')}` : ''}`;
   const rect = element.getBoundingClientRect();
   const scrollX = window.scrollX || window.pageXOffset;
   const scrollY = window.scrollY || window.pageYOffset;
@@ -303,28 +339,21 @@ function enableHighlightMode() {
 
 function removeHighlightMode() {
   if (isHighlightingEnabled) {
-    isSelectionMode = false;
     isHighlightingEnabled = false;
     document.removeEventListener('mouseover', highlightElement);
     document.removeEventListener('click', handleAllClicks, { capture: true });
     removeOverlay();
-    clearHighlight();
     saveStateToBackground();
   }
 }
 
 function handleAllClicks(event) {
   if (!isSelectionMode || !isHighlightingEnabled) return;
-
   const target = document.elementFromPoint(event.clientX, event.clientY);
-
-  if (target.closest('.extension-control-panel, .extension-instruction-window')) {
-    return;
-  }
+  if (target.closest('.extension-control-panel, .extension-instruction-window')) return;
 
   event.preventDefault();
   event.stopPropagation();
-
   selectElement(event, target);
 }
 
@@ -332,11 +361,7 @@ function selectElement(event, target) {
   if (target.tagName.toLowerCase() === 'svg' || target.tagName.toLowerCase() === 'path') {
     target = target.closest('span, div, button, a, p, li, ul, ol, section, article') || target.parentElement;
   }
-
-  if (!document.body.contains(target)) {
-    console.log('Элемент не найден в DOM');
-    return;
-  }
+  if (!document.body.contains(target)) return;
 
   const x = event.clientX;
   const y = event.clientY;
@@ -347,9 +372,7 @@ function selectElement(event, target) {
     currentLang === 'ru' ? `Инструкция для ${elementDesc}:` : `Instruction for ${elementDesc}:`,
     currentLang === 'ru' ? 'Нажми сюда' : 'Click here'
   );
-  if (instruction === null) {
-    // Оставляем режим подсветки активным
-  } else if (instruction?.trim()) {
+  if (instruction?.trim()) {
     instructions.push({ element: elementDesc, instruction: instruction.trim() });
     updateInstructionWindow();
     saveInstructionsToBackground();
@@ -386,35 +409,27 @@ style.textContent = `
     80% { opacity: 1; }
     100% { opacity: 0; }
   }
-  .extension-overlay {
-    pointer-events: none !important;
-  }
-  .extension-control-panel,
-  .extension-instruction-window {
-    pointer-events: auto !important;
-    z-index: 10000 !important;
-  }
 `;
 document.head.appendChild(style);
 
 function toggleFormat() {
   useFullElementFormat = !useFullElementFormat;
-  updateInstructionWindow();
   const toggleButton = document.getElementById('toggleFormatButton');
   if (toggleButton) {
     toggleButton.textContent = currentLang === 'ru' ? (useFullElementFormat ? 'Краткий' : 'Полный') : (useFullElementFormat ? 'Short' : 'Full');
     toggleButton.style.background = useFullElementFormat ? '#28a745' : '#007bff';
     toggleButton.dataset.originalColor = toggleButton.style.background;
   }
+  updateInstructionWindow();
   saveStateToBackground();
 }
 
 function toggleCoordinates() {
   useCoordinates = !useCoordinates;
-  const toggleCoordinatesButton = document.getElementById('toggleCoordinatesButton');
-  if (toggleCoordinatesButton) {
-    toggleCoordinatesButton.style.background = useCoordinates ? '#ff9800' : '#6c757d';
-    toggleCoordinatesButton.dataset.originalColor = toggleCoordinatesButton.style.background;
+  const toggleButton = document.getElementById('toggleCoordinatesButton');
+  if (toggleButton) {
+    toggleButton.style.background = useCoordinates ? '#ff9800' : '#6c757d';
+    toggleButton.dataset.originalColor = toggleButton.style.background;
   }
   updateInstructionWindow();
   saveStateToBackground();
@@ -436,45 +451,44 @@ function getFullElementDescription(element, x, y) {
     }
     return useCoordinates ? `${fullHtml} X: ${x} Y: ${y}` : fullHtml;
   } else {
-    let value = '';
-    if (tag === 'input' || tag === 'textarea') {
-      value = element.value ? `value="${element.value.slice(0, 20).replace(/[\n\t\r]+/g, ' ')}"` : '';
-    }
+    const value = (tag === 'input' || tag === 'textarea') && element.value
+      ? `value="${element.value.slice(0, 20).replace(/[\n\t\r]+/g, ' ')}"`
+      : '';
     return `${tag}${id}${classes}${value ? `: ${value}` : ''}`;
   }
 }
 
 function saveInstructionsToBackground() {
-  chrome.runtime.sendMessage({ action: 'saveInstructions', instructions });
+  runtime.runtime.sendMessage({ action: 'saveInstructions', instructions });
 }
 
 function saveStateToBackground() {
-  chrome.runtime.sendMessage({
+  runtime.runtime.sendMessage({
     action: 'saveState',
     state: { isSelectionMode, isHighlightingEnabled, currentLang, useFullElementFormat, useCoordinates }
   });
 }
 
 function restoreState() {
-  chrome.runtime.sendMessage({ action: 'getState' }, (response) => {
+  runtime.runtime.sendMessage({ action: 'getState' }, (response) => {
     if (response?.state) {
       isSelectionMode = response.state.isSelectionMode;
-      isHighlightingEnabled = response.state.isHighlighting;
+      isHighlightingEnabled = response.state.isHighlightingEnabled;
       currentLang = response.state.currentLang || 'ru';
-      useFullElementFormat = response.state.useFullElementFormat !== undefined ? response.state.useFullElementFormat : true;
-      useCoordinates = response.state.useCoordinates || false;
-      if (isSelectionMode && isHighlightingEnabled) {
-        createOverlay();
+      useFullElementFormat = response.state.useFullElementFormat ?? false;
+      useCoordinates = response.state.useCoordinates ?? true;
+      if (isSelectionMode) {
         createControlPanel();
-        createInstructionWindow();
-        document.addEventListener('mouseover', highlightElement);
-        document.addEventListener('click', handleAllClicks, { capture: true });
-      } else {
-        createControlPanel();
+        if (isHighlightingEnabled) {
+          createOverlay();
+          createInstructionWindow();
+          document.addEventListener('mouseover', highlightElement);
+          document.addEventListener('click', handleAllClicks, { capture: true });
+        }
       }
     }
   });
-  chrome.runtime.sendMessage({ action: 'getInstructions' }, (response) => {
+  runtime.runtime.sendMessage({ action: 'getInstructions' }, (response) => {
     if (response?.instructions) {
       instructions = response.instructions;
       updateInstructionWindow();
@@ -487,29 +501,21 @@ function darkenColor(color) {
     const [r, g, b] = color.match(/\d+/g).map(Number);
     return `rgb(${Math.max(0, r - 30)}, ${Math.max(0, g - 30)}, ${Math.max(0, b - 30)})`;
   }
-  return color; // Fallback
+  return color;
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+runtime.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startSelection') {
     isSelectionMode = true;
     isHighlightingEnabled = false;
     currentLang = message.lang || 'ru';
     createControlPanel();
-    createInstructionWindow();
     saveStateToBackground();
     sendResponse({ status: 'started' });
   } else if (message.action === 'stopSelection') {
-    isSelectionMode = false;
-    isHighlightingEnabled = false;
-    document.removeEventListener('mouseover', highlightElement);
-    document.removeEventListener('click', handleAllClicks, { capture: true });
-    removeAllUI();
-    chrome.runtime.sendMessage({ action: 'showInstructions', instructions });
-    saveStateToBackground();
+    stopSelectionMode();
     sendResponse({ status: 'stopped' });
   }
 });
 
-window.addEventListener('beforeunload', saveStateToBackground);
 document.addEventListener('DOMContentLoaded', restoreState);
