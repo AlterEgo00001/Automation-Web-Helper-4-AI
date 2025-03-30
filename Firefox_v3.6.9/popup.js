@@ -1,10 +1,12 @@
 let currentLang = 'ru';
 let instructions = [];
+const runtime = typeof chrome !== 'undefined' ? chrome : browser;
 
 const translations = {
   ru: {
     compressHtml: 'Сжать HTML',
     startSelection: 'Начать выбор',
+    stopSelection: 'Остановить',
     copy: 'Копировать',
     langRu: 'Русский',
     langEn: 'English',
@@ -13,6 +15,7 @@ const translations = {
     noActiveTab: 'Нет активной вкладки',
     compressionError: 'Ошибка сжатия',
     selectionStarted: 'Режим выбора запущен',
+    selectionStopped: 'Режим выбора остановлен',
     copied: 'Скопировано в буфер обмена',
     instructionsShown: 'Инструкции отображены',
     noInstructions: 'Инструкций нет'
@@ -20,6 +23,7 @@ const translations = {
   en: {
     compressHtml: 'Compress HTML',
     startSelection: 'Start Selection',
+    stopSelection: 'Stop Selection',
     copy: 'Copy',
     langRu: 'Russian',
     langEn: 'English',
@@ -28,6 +32,7 @@ const translations = {
     noActiveTab: 'No active tab',
     compressionError: 'Compression error',
     selectionStarted: 'Selection mode started',
+    selectionStopped: 'Selection mode stopped',
     copied: 'Copied to clipboard',
     instructionsShown: 'Instructions displayed',
     noInstructions: 'No instructions'
@@ -40,23 +45,29 @@ function updateLanguage() {
   document.getElementById('langEn').textContent = t.langEn;
   document.getElementById('compressHtml').textContent = t.compressHtml;
   document.getElementById('startSelection').textContent = t.startSelection;
+  document.getElementById('stopSelection').textContent = t.stopSelection;
   document.getElementById('copyButton').textContent = t.copy;
-  const resultArea = document.getElementById('resultArea');
-  resultArea.placeholder = t.placeholder;
+  document.getElementById('resultArea').placeholder = t.placeholder;
 }
 
-function toggleCopyButton(show) {
-  document.getElementById('copyButton').style.display = show ? 'inline-block' : 'none';
+function toggleButtons(isSelecting) {
+  const startButton = document.getElementById('startSelection');
+  const stopButton = document.getElementById('stopSelection');
+  const copyButton = document.getElementById('copyButton');
+  startButton.style.display = isSelecting ? 'none' : 'inline-block';
+  stopButton.style.display = isSelecting ? 'inline-block' : 'none';
+  copyButton.style.display = instructions.length || resultArea.value ? 'inline-block' : 'none';
 }
 
 function syncState() {
-  chrome.runtime.sendMessage({ action: 'getState' }, (response) => {
+  runtime.runtime.sendMessage({ action: 'getState' }, (response) => {
     if (response?.state) {
       currentLang = response.state.currentLang || 'ru';
+      toggleButtons(response.state.isSelectionMode);
       updateLanguage();
     }
   });
-  chrome.runtime.sendMessage({ action: 'getInstructions' }, (response) => {
+  runtime.runtime.sendMessage({ action: 'getInstructions' }, (response) => {
     if (response?.instructions) {
       instructions = response.instructions;
       showInstructions();
@@ -71,7 +82,7 @@ function showInstructions() {
     ? instructions.map((i, idx) => `${idx + 1}. ${i.instruction} [${i.element}]`).join('\n')
     : translations[currentLang].noInstructions;
   resultArea.value = instructionText;
-  toggleCopyButton(!!instructions.length);
+  toggleButtons(false);
   debugOutput.textContent = instructions.length ? translations[currentLang].instructionsShown : translations[currentLang].noInstructions;
 }
 
@@ -85,20 +96,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('langRu').addEventListener('click', () => {
     currentLang = 'ru';
     updateLanguage();
-    chrome.runtime.sendMessage({ action: 'saveState', state: { currentLang } });
+    runtime.runtime.sendMessage({ action: 'saveState', state: { currentLang } });
   });
 
   document.getElementById('langEn').addEventListener('click', () => {
     currentLang = 'en';
     updateLanguage();
-    chrome.runtime.sendMessage({ action: 'saveState', state: { currentLang } });
+    runtime.runtime.sendMessage({ action: 'saveState', state: { currentLang } });
   });
 
   document.getElementById('compressHtml').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'compressHtml' }, (response) => {
+    runtime.runtime.sendMessage({ action: 'compressHtml' }, (response) => {
       resultArea.value = '';
       tabButtons.innerHTML = '';
-      toggleCopyButton(false);
+      toggleButtons(false);
       if (response.error) {
         resultArea.value = `${translations[currentLang].error}: ${response.error}`;
         debugOutput.textContent = translations[currentLang].compressionError;
@@ -106,14 +117,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const { parts, totalParts } = response.compressedHtml;
         if (totalParts === 1) {
           resultArea.value = parts[0];
-          toggleCopyButton(true);
+          toggleButtons(false);
         } else {
           parts.forEach((part, index) => {
             const button = document.createElement('button');
             button.textContent = `${index + 1}`;
             button.addEventListener('click', () => {
               resultArea.value = part;
-              toggleCopyButton(true);
+              toggleButtons(false);
               tabButtons.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
               button.classList.add('active');
             });
@@ -121,26 +132,44 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           resultArea.value = parts[0];
           tabButtons.children[0].classList.add('active');
-          toggleCopyButton(true);
+          toggleButtons(false);
         }
       }
     });
   });
 
   document.getElementById('startSelection').addEventListener('click', () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    runtime.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || tabs.length === 0) {
         debugOutput.textContent = translations[currentLang].noActiveTab;
         return;
       }
       resultArea.value = '';
       tabButtons.innerHTML = '';
-      toggleCopyButton(false);
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'startSelection', lang: currentLang }, (response) => {
-        if (chrome.runtime.lastError) {
-          debugOutput.textContent = `${translations[currentLang].error}: ${chrome.runtime.lastError.message}`;
+      toggleButtons(true);
+      runtime.tabs.sendMessage(tabs[0].id, { action: 'startSelection', lang: currentLang }, (response) => {
+        if (runtime.runtime.lastError) {
+          debugOutput.textContent = `${translations[currentLang].error}: ${runtime.runtime.lastError.message}`;
+          toggleButtons(false);
         } else if (response?.status === 'started') {
           debugOutput.textContent = translations[currentLang].selectionStarted;
+        }
+      });
+    });
+  });
+
+  document.getElementById('stopSelection').addEventListener('click', () => {
+    runtime.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || tabs.length === 0) {
+        debugOutput.textContent = translations[currentLang].noActiveTab;
+        return;
+      }
+      runtime.tabs.sendMessage(tabs[0].id, { action: 'stopSelection' }, (response) => {
+        if (runtime.runtime.lastError) {
+          debugOutput.textContent = `${translations[currentLang].error}: ${runtime.runtime.lastError.message}`;
+        } else if (response?.status === 'stopped') {
+          debugOutput.textContent = translations[currentLang].selectionStopped;
+          toggleButtons(false);
         }
       });
     });
@@ -153,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-chrome.runtime.onMessage.addListener((message) => {
+runtime.runtime.onMessage.addListener((message) => {
   if (message.action === 'showInstructions') {
     instructions = message.instructions;
     showInstructions();
