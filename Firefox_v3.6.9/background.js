@@ -1,25 +1,28 @@
 console.log('Background script loaded');
 
 let savedInstructions = [];
-let savedState = { isSelectionMode: false, isHighlighting: false, currentLang: 'ru', useFullElementFormat: true };
+let savedState = { isSelectionMode: false, isHighlighting: false, currentLang: 'ru', useFullElementFormat: false, useCoordinates: true };
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// Совместимость с Chrome и Firefox
+const runtime = typeof chrome !== 'undefined' ? chrome : browser;
+
+runtime.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'compressHtml') {
     console.log('Received compressHtml request');
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    runtime.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || tabs.length === 0) {
         console.error('No active tab found');
         sendResponse({ error: savedState.currentLang === 'ru' ? 'Нет активной вкладки' : 'No active tab' });
         return;
       }
       const tabId = tabs[0].id;
-      chrome.scripting.executeScript({
+      runtime.scripting.executeScript({
         target: { tabId: tabId },
         func: compressHtml
       }, (results) => {
-        if (chrome.runtime.lastError) {
-          console.error('Script execution error:', chrome.runtime.lastError.message);
-          sendResponse({ error: chrome.runtime.lastError.message });
+        if (runtime.runtime.lastError) {
+          console.error('Script execution error:', runtime.runtime.lastError.message);
+          sendResponse({ error: runtime.runtime.lastError.message });
         } else if (results && results[0] && results[0].result) {
           console.log('Compression successful, sending response');
           sendResponse({ compressedHtml: results[0].result });
@@ -36,7 +39,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === 'getInstructions') {
     sendResponse({ instructions: savedInstructions });
   } else if (message.action === 'showInstructions') {
-    chrome.runtime.sendMessage({ action: 'showInstructions', instructions: message.instructions });
+    runtime.runtime.sendMessage({ action: 'showInstructions', instructions: message.instructions });
     sendResponse({ status: 'sent' });
   } else if (message.action === 'saveState') {
     savedState = { ...savedState, ...message.state };
@@ -85,7 +88,7 @@ function compressHtml() {
       }
     }
 
-    return { parts: parts, totalParts: parts.length };
+    return { parts, totalParts: parts.length };
   } catch (error) {
     console.error('Compression error:', error.message);
     return { error: error.message };
