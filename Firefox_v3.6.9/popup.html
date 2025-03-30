@@ -1,31 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Element Selector</title>
+  <title>Automation Web Helper</title>
   <style>
     body {
       width: 400px;
       padding: 10px;
       font-family: Arial, sans-serif;
       background: #f9f9f9;
+      margin: 0;
+    }
+    .button-container {
+      margin-bottom: 10px;
     }
     button {
       padding: 5px 10px;
-      margin: 5px 2px;
+      margin: 0 5px 5px 0;
       border: none;
       border-radius: 3px;
       color: white;
       cursor: pointer;
+      transition: background 0.2s;
     }
-    #langRu { background: #007bff; }
-    #langRu:hover { background: #0056b3; }
-    #langEn { background: #007bff; }
-    #langEn:hover { background: #0056b3; }
+    #langRu, #langEn { background: #007bff; }
+    #langRu:hover, #langEn:hover { background: #0056b3; }
     #compressHtml { background: #28a745; }
     #compressHtml:hover { background: #218838; }
     #startSelection { background: #17a2b8; }
     #startSelection:hover { background: #138496; }
+    #stopSelection { background: #dc3545; display: none; }
+    #stopSelection:hover { background: #c82333; }
     #copyButton { background: #ffc107; display: none; }
     #copyButton:hover { background: #e0a800; }
     #tabButtons {
@@ -34,7 +39,7 @@
     #tabButtons button {
       background: #6c757d;
       padding: 3px 8px;
-      margin: 2px;
+      margin: 0 2px 5px 0;
     }
     #tabButtons button:hover {
       background: #5a6268;
@@ -51,6 +56,7 @@
       padding: 5px;
       resize: vertical;
       font-family: Arial, sans-serif;
+      box-sizing: border-box;
     }
     #debugOutput {
       font-size: 12px;
@@ -60,17 +66,18 @@
   </style>
 </head>
 <body>
-  <div>
+  <div class="button-container">
     <button id="langRu">Русский</button>
     <button id="langEn">English</button>
   </div>
-  <div>
+  <div class="button-container">
     <button id="compressHtml">Сжать HTML</button>
     <button id="startSelection">Начать выбор</button>
+    <button id="stopSelection">Остановить</button>
     <button id="copyButton">Копировать</button>
   </div>
   <div id="tabButtons"></div>
-  <textarea id="resultArea" data-placeholder="Сжатый HTML или инструкции появятся здесь" readonly></textarea>
+  <textarea id="resultArea" placeholder="Сжатый HTML или инструкции появятся здесь" readonly></textarea>
   <div id="debugOutput"></div>
   <script src="popup.js"></script>
 </body>
